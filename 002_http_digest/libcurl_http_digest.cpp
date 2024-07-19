@@ -1,27 +1,34 @@
 #include <curl/curl.h>
 #include <string>
-#include <cstdio> // Assuming this is for printf/INFO macros
+#include <cstdio>
+#include <jsoncpp/json/json.h>
 
-// Global variables for response data
-std::string responseContent;
-std::string responseHeader;
-
-std::string ip = "192.168.1.2";
-std::string user = "root";
-std::string password = "abc123";
-std::string urlPath = "hello";
-
-size_t write_data(void *ptr, size_t size, size_t nmemb, std::string *data)
+class licurl_http_digest
 {
-    // Your implementation of write_data function
-    return size * nmemb; // Example implementation
+private:
+    std::string responseContent;
+    std::string responseHeader;
+
+    std::string url_;
+    std::string user_;
+    std::string password_;
+
+public:
+    licurl_http_digest(const std::string &url, const std::string &user, const std::string &pwd);
+    ~licurl_http_digest() = default;
+    static size_t write_data(void *ptr, size_t size, size_t nmemb, std::string *data);
+    std::string pack_http_json();
+};
+
+size_t licurl_http_digest::write_data(void *ptr, size_t size, size_t nmemb, std::string *data)
+{
+    std::string &str = *(std::string *)data;
+    str.append((char *)ptr, size * nmemb);
+    return size * nmemb;
 }
 
-std::string pack_http_json()
-{
-    return "hello world"; // Example implementation
-}
-int main()
+licurl_http_digest::licurl_http_digest(const std::string &url, const std::string &user, const std::string &pwd)
+    : url_(url), user_(user), password_(pwd)
 {
 
     CURL *curl;
@@ -30,9 +37,8 @@ int main()
     curl = curl_easy_init();
     if (curl)
     {
-        std::string url = std::string("http://") + ip ;
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        printf("url %s\n", url.c_str());
+        curl_easy_setopt(curl, CURLOPT_URL, url_.c_str());
+        printf("url %s\n", url_.c_str());
         // 设置Digest认证
         curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_DIGEST);
 
@@ -42,8 +48,8 @@ int main()
         res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
 
         // 设置用户名和密码
-        curl_easy_setopt(curl, CURLOPT_USERNAME, user.c_str());
-        curl_easy_setopt(curl, CURLOPT_PASSWORD, password.c_str());
+        curl_easy_setopt(curl, CURLOPT_USERNAME, user_.c_str());
+        curl_easy_setopt(curl, CURLOPT_PASSWORD, password_.c_str());
 
         // 设置请求方法为PUT
         curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
@@ -72,6 +78,20 @@ int main()
         printf("responseContent \n %s\n", responseContent.c_str());
         // 清理curl句柄
         curl_easy_cleanup(curl);
-        }
+    }
+}
+
+std::string licurl_http_digest::pack_http_json()
+{
+    Json::Value jsonData;
+    jsonData["name"] = "John Doe";
+    jsonData["age"] = 30;
+
+    return jsonData.toStyledString();
+}
+
+int main()
+{
+    licurl_http_digest("https://example.com/api/resource", "root", "123");
     return 0;
 }
